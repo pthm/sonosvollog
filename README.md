@@ -4,11 +4,16 @@ Is someone in your office playing silly buggers with the volume on the Sonos?
 
 This stupid tool will connect to a Sonos device using the uPnP API and log the volume level at specified intervals so you can gather proof of Sonos Shenanigans™
 
+## Origin Story
+![Slack conversation](https://i.imgur.com/bQtytYt.png)
+
+## Installation
 ```bash
 go install github.com/pthm/sonosvollog
 sonosvollog
 ```
 
+## Usage
 ```
 Searching for Sonos devices...
 Found 1 Sonos devices:
