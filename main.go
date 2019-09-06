@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net"
 	"os"
 	"os/signal"
 	"strconv"
@@ -75,8 +76,25 @@ func readInput(prompt string) string {
 func main() {
 	log.SetOutput(ioutil.Discard)
 	mgr := ssdp.MakeManager()
+
+	fmt.Println("Choose a network interface")
+	ints, err := net.Interfaces()
+	if err != nil {
+		panic(err)
+	}
+	for idx, int := range ints {
+		fmt.Printf("\t%v. %v\n", idx+1, int.Name)
+	}
+	choiceStr := readInput("Choose (Enter number)")
+	choiceIdx, err := strconv.Atoi(choiceStr)
+	if err != nil {
+		panic(err)
+	}
+	choiceIdx--
+	chosenInt := ints[choiceIdx]
+
 	fmt.Println("Searching for Sonos devices...")
-	if err := mgr.Discover("en0", "11209", false); err != nil {
+	if err := mgr.Discover(chosenInt.Name, "11209", false); err != nil {
 		panic(err)
 	}
 
@@ -103,8 +121,8 @@ func main() {
 	for idx, dev := range devs {
 		fmt.Printf("\t%v. %v\n", idx+1, dev.Name)
 	}
-	choiceStr := readInput("Choose")
-	choiceIdx, err := strconv.Atoi(choiceStr)
+	choiceStr = readInput("Choose (Enter number)")
+	choiceIdx, err = strconv.Atoi(choiceStr)
 	if err != nil {
 		panic(err)
 	}
