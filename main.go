@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/csv"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -14,11 +15,18 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/ianr0bkny/go-sonos"
 	"github.com/ianr0bkny/go-sonos/ssdp"
 )
 
-func logVolume(dev ssdp.Device) {
+type Punish struct {
+	Enabled bool
+	Threshold int
+	Ideal int
+}
+
+func logVolume(dev ssdp.Device, punish Punish) {
 	dp := sonos.Connect(dev, nil, sonos.SVC_DEVICE_PROPERTIES)
 	rc := sonos.Connect(dev, nil, sonos.SVC_RENDERING_CONTROL)
 	name, _, _ := dp.DeviceProperties.GetZoneAttributes()
@@ -50,9 +58,10 @@ func logVolume(dev ssdp.Device) {
 				if err != nil {
 					panic(err)
 				}
-				//if vol > 27 {
-				//	s.RenderingControl.SetVolume(0, "Master", 10)
-				//}
+				if punish.Enabled && vol > uint16(punish.Threshold) {
+					fmt.Printf("PUNISH: Volume exceeded threshold of %v lowering it to %v\n", punish.Threshold, punish.Ideal)
+					s.RenderingControl.SetVolume(0, "Master", uint16(punish.Ideal))
+				}
 			}
 		}
 	}(rc)
@@ -75,6 +84,19 @@ func readInput(prompt string) string {
 
 func main() {
 	log.SetOutput(ioutil.Discard)
+
+	punish := flag.Bool("punish", false, "If volume exceeds threshold lower it")
+	threshold := flag.Int("threshold", 30, "Threshold to use for punishment (default: 30)")
+	ideal := flag.Int("ideal", 20, "Volume to set as punishment (default: 20)")
+	flag.Parse()
+
+	spew.Dump(punish, threshold, ideal)
+	punishConfig := Punish{
+		Enabled:   *punish,
+		Threshold: *threshold,
+		Ideal:     *ideal,
+	}
+
 	mgr := ssdp.MakeManager()
 
 	fmt.Println("Choose a network interface")
@@ -128,7 +150,11 @@ func main() {
 	}
 	choiceIdx--
 
-	logVolume(devs[choiceIdx].Dev)
+	if punishConfig.Enabled {
+		fmt.Println("Punishment enabled!")
+		fmt.Printf("If volume exceeds %v it will be lowered to %v\n", punishConfig.Threshold, punishConfig.Ideal)
+	}
+	logVolume(devs[choiceIdx].Dev, punishConfig)
 
 	mgr.Close()
 }
